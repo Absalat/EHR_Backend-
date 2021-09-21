@@ -1,0 +1,393 @@
+const router = require("express").Router();
+// Bring in the User Registration function
+const {
+  userAuth,
+  userLogin,
+  checkRole,
+  userRegister,
+  serializeUser
+} = require("../controllers/AuthController");
+
+
+
+// Users Registeration Route
+router.post("/register-user", async (req,res) => {
+  await userRegister(req.body, "User", res);
+});
+
+// Admin Registration Route
+router.post("/register-admin", async (req, res) => {
+  await userRegister(req.body, "Admin", res);
+});
+
+// Super Admin Registration Route
+router.post("/register-super-admin", async (req, res) => {
+  await userRegister(req.body, "Superadmin", res);
+});
+
+//Approver Registration Route
+
+router.post("/register-approver", async (req, res) => {
+  await userRegister(req.body, "Approver", res);
+});
+
+
+router.post('/login', userLogin)
+// router.post("/login-user", async (req, res) => {
+//   await userLogin(req.body,"User", res);
+// });
+
+//router.route("/login-user").post(AuthController.userLogin);
+// Admin Login Route
+router.post("/login-admin", async (req, res) => {
+  await userLogin(req.body, "admin", res);
+});
+
+// Super Admin Login Route
+router.post("/login-super-admin", async (req, res) => {
+  await userLogin(req.body, "superadmin", res);
+});
+router.post("/login-approver", async (req, res) => {
+  await userLogin(req.body, "approver", res);
+});
+// Profile Route
+router.get("/profile", userAuth, async (req, res) => {
+  return res.json(serializeUser(req.user));
+});
+
+// Users Protected Route
+router.get(
+  "/user-protectd",
+  userAuth,
+  checkRole(["user"]),
+  async (req, res) => {
+    return res.json("Hello User");
+  }
+);
+
+// Admin Protected Route
+router.get(
+  "/admin-protectd",
+  userAuth,
+  checkRole(["admin"]),
+  async (req, res) => {
+    return res.json("Hello Admin");
+  }
+);
+
+// Super Admin Protected Route
+router.get(
+  "/super-admin-protectd",
+  userAuth,
+  checkRole(["superadmin"]),
+  async (req, res) => {
+    return res.json("Hello Super Admin");
+  }
+);
+
+// Super Admin Protected Route
+router.get(
+  "/super-admin-and-admin-protectd",
+  userAuth,
+  checkRole(["superadmin", "admin"]),
+  async (req, res) => {
+    return res.json("Super admin and Admin");
+  }
+);
+
+module.exports = router;
+
+// post
+const Post = require('../models/post.model');
+const Student = require('../models/student.model');
+
+exports.CreatePost = async(req, res) => {
+
+   const name = req.params.name;
+   const{postname, file,title,description,department,under,academiclevel,status} = req.body;
+    
+  
+  if(!postname){
+     return res.status(400).json({
+        status:'fail',
+        message:'name is empty'
+     })
+      }
+  
+   if(!file){
+     return res.status(400).json({
+        status:'fail',
+        message:'please insert the file'
+     })
+  }
+  if(!title){
+     return res.status(400).json({
+        status:'fail',
+        message:'please insert the title'
+     })
+  }
+
+
+  if(!status){
+     return res.status(400).json({
+        status:'fail',
+        message:'please insert the status level'
+     })
+  }
+const postedBy = await Student.findOne({name});
+
+
+let newPost = new Post({name,postname, file, title, description,department,under,academiclevel,status})
+
+newPost.postedBy = postedBy._id;
+postedBy.Post = newPost._id;
+
+await postedBy.save();
+await newPost.save();
+res.status(200).json({
+   status: 'success',
+   message: 'post successfully created'  
+})
+}
+
+
+exports.postList = async(req, res) => {
+   const postedBy = await Post.find({}).populate('post');
+   res.json({postedBy})
+
+}
+
+
+exports.findPostBYId = (req, res) => {
+   const _id = req.params._id;
+   Post.findById(_id)
+     .then(data => {
+       if (!data)
+         res.status(404).send({ message: "id not found" + _id });
+       else res.send(data);
+     })
+     .catch(err => {
+       res
+         .status(500)
+         .send({
+           message: "error retriving with id" +
+             _id
+         });
+     });
+ }
+
+ const express = require('express');
+
+const postController = require('../controllers/post.controller');
+
+const router = express.Router();
+
+
+router.route('/post-list').get(postController.postList);
+router.route('/:name/add-post').post(postController.CreatePost);
+router.route('/post/:_id').get(postController.findPostBYId);
+
+
+module.exports = router;
+ 
+/// UserRoute
+
+const express = require('express');
+const router = express.Router();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const passport = require("passport");
+
+//const Client = require('../models/client.model');
+const User = require('../models/user.model')
+router.route('/user-list').get((req, res) => {
+   Client.find( ) 
+  .then(Client => res.json(Client))
+  .catch(err => res.status(400).json('Error:' + err));
+});
+
+router.post('/register', (req, res, next) => {
+
+  let newClient = new Client();
+
+  
+
+  newClient.password= bcrypt.hash(req.body.password, 12);
+
+  
+  
+
+  newClient.save((err, Client) => {
+    if(err) {
+      return res.status(400).send({
+        message : "error"
+      });
+    }
+    else{
+      return res.status(201).send({
+        message: "admin added"
+      });
+    }
+  });
+});
+router.route('/:_id').get((req, res) => {
+  const _id = req.params._id;
+  Client.findById(_id)
+  .then(data => {
+    if (!data)
+    res.status(404).send({ message: "id not found" + _id});
+    else res.send(data);
+  })
+  .catch(err => {
+    res
+    .status(500)
+    .send({ message: "error retriving with id" + 
+    _id});
+  });
+});
+router.route('/:username').get((req, res) => {
+  const username = req.params.username;
+  Client.findOne({username})
+  .then(data => {
+    if (!data)
+    res.status(404).send({ message: "id not found" + _id});
+    else res.send(data);
+  })
+  .catch(err => {
+    res
+    .status(500)
+    .send({ message: "error retriving with" + 
+    username});
+  });
+});
+router.route('/update:id').put((req, res, next) => {
+  const clientupdate= new Client({
+    _id: req.params.id,
+    username: User.findOne({username}),
+    password: User.findOne({password}),
+  });
+  Client.updateOne({_id: req.params.id}, clientupdate).then(
+    () => {
+      res.status(201).json({
+        message: 'updated successfully!'
+      });
+    }
+  ).catch(
+    (error) => {
+      res.status(400).json({
+        error: error
+      });
+    }
+  );
+});
+router.route('/delete:id').delete((req, res, next) => {
+   Client.deleteOne({_id: req.params.id}).then(
+     () => {
+       res.status(200).json({
+         message: 'Deleted!'
+       });
+     }
+   ).catch(
+     (error) => {
+       res.status(400).json({
+         error: error
+       });
+     }
+   );
+ });
+module.exports = router;
+
+//Users.js
+
+const router = require("express").Router();
+
+//const Client = require("../models/client.model")
+
+const bcrypt = require('bcryptjs');
+
+
+
+router.route('/add-user').post((req, res) => {
+    
+    
+    const password =req.body.password;
+    const firstname =req.body.firstname;
+    const lastname =req.body.lastname;
+    const gender =req.body.gender;
+    const institute =req.body.institute;
+    const profilepicture =req.body.profilepicture;
+    const email =req.body.email;
+    const academiclevel =req.body.academiclevel;
+    const year =req.body.year;
+    const date =req.body.date;
+
+
+    const newClient = new Client({
+       username,password,firstname,lastname,gender,institute,
+        profilepicture,email,academiclevel,date,year
+    });
+
+    newClient.save()
+    .then(() => res.json('User added'))
+    .catch(err => res.status(400).json('Error: ' + err));
+
+});
+router.route('/user-list').get((req, res) => {
+  Client.find( ) 
+    .then(user => res.json(user))
+    .catch(err => res.status(400).json('Error:' + err));
+  });
+  router.route('/usertotal').get((req, res) => {
+    Client.count(  ) 
+    .then(client => res.json(client))
+    .catch(err => res.status(400).json('Error:' + err));
+  });
+
+
+  router.route('/:_id').get((req, res) => {
+    const _id = req.params._id;
+    Client.findById(_id)
+    .then(data => {
+      if (!data)
+      res.status(404).send({ message: "id not found" + _id});
+      else res.send(data);
+    })
+    .catch(err => {
+      res
+      .status(500)
+      .send({ message: "error retriving with id" + 
+      _id});
+    });
+  });
+  
+  router.route('/update:id').put((req, res, next) => {
+    const clientupdate= new Client({
+      _id: req.params.id,
+      username: req.body.username,
+      password: req.body.password,
+      lastname: req.body.lastname,
+      gender: req.body.gender,
+      institute: req.body.institute,
+      profilepicture: req.body.profilepicture,
+      email: req.body.email,
+      academiclevel: req.body.academiclevel,
+      year: req.body.year,
+      date: req.body.date
+      
+    });
+    Client.updateOne({_id: req.params.id}, clientupdate).then(
+      () => {
+        res.status(201).json({
+          message: 'user(Client) updated successfully!'
+        });
+      }
+    ).catch(
+      (error) => {
+        res.status(400).json({
+          error: error
+        });
+      }
+    );
+  });
+  
+module.exports = router;
